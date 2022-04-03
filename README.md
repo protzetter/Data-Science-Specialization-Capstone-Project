@@ -6,4 +6,8 @@ https://github.com/protzetter/Data-Science-Specialization-Capstone-Project/blob/
 
 ## Shiny application
 
-The source code for the shiny app is included in the **NextWordPrediction** directory.
+The source code for the shiny app is included in the **NextWordPrediction** directory
+
+## Data files for the Shiny App
+
+Data files used by the shiny app are in the **Word_predictor** directory 
