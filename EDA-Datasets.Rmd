@@ -1,0 +1,180 @@
+---
+title: 'Data Science Specialization Capstone project'
+author: "Patrick Rotzetter"
+date: "2/13/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r include=FALSE}
+library(tidyverse)
+library(tidytext)
+library(tm)
+blogs='./final/en_US/en_US.blogs.txt'
+tweets='./final/en_US/en_US.twitter.txt'
+news='./final/en_US/en_US.news.txt'
+
+```
+
+## Exploratory data analysis
+
+
+# Loading the data sets and counting the number of entries
+
+We will first analyze the 3 US data sets, including blogs, news and tweets. Let us look first at the number of lines for each file, i.e. blogs, news and tweets in English.
+
+
+```{r load, echo=TRUE, message=FALSE, warning=FALSE, cache=TRUE}
+# processFile calculates number of lines in the input file
+getFileLength = function(filepath) {
+  con = file(filepath, "r")
+  lineNum = 0
+  while ( TRUE ) {
+    line = readLines(con, n = 1)
+    if ( length(line) == 0 ) {
+      break
+    }
+    lineNum <- lineNum +1
+  }
+  close(con)
+  return (lineNum)
+}
+#calculate length of blog file
+lenBlogs<-getFileLength(blogs)
+lenTweets<-getFileLength(tweets)
+lenNews<-getFileLength(news)
+
+print(paste(paste(paste('The number of lines in the file ', blogs),' is'), lenBlogs))
+print(paste(paste(paste('The number of lines in the file ', tweets),' is'), lenTweets))
+print(paste(paste(paste('The number of lines in the file ', news),' is'), lenNews))
+
+```
+
+The files are quite big, we will just take a percentage of samples for each file for further analysis.
+
+# Sampling the datasets
+
+Now let us lok a bit more in detail and check the word counts per file and their distribution. For this purpose, we will load only 1% samples from each file using the binomial distribution. We will save the 1% sample in text files for later use.
+
+
+```{r samplefile, echo=TRUE, message=FALSE, warning=FALSE, cache=TRUE}
+
+readFileSamples = function(filepath, len) {
+  con = file(filepath, "r")
+  sample= rbinom(len, 1, .01)
+  lines=c()
+  for (i in 1:len)  {
+    line = readLines(con, n = 1)
+    if ( length(line) == 0 ) {
+      break
+    }
+    if (sample[i]==1) {
+      lines<-c(lines,line)
+    }
+  }
+  close(con)
+  return (lines)
+}
+
+#generate random samples using binomial distribution for logs
+linesBlogs<-readFileSamples(blogs,lenBlogs)
+#write sample files
+d<-lapply(linesBlogs, write, file="samplesblogs.txt", append=T)
+
+#generate random samples using binomial distribution for tweets
+linesTweets<-readFileSamples(tweets,lenTweets)
+#write sample files
+d<-lapply(linesTweets, write, file="samplestweets.txt", append=T)
+
+#generate random samples using binomial distribution for news
+linesNews<-readFileSamples(news,lenNews)
+#write sample files
+d<-lapply(linesNews, write, file="samplesnews.txt", append=T)
+
+# let us combine all together
+# read the sample files and merge into a single dataframe
+linesDFBlog<-as.data.frame(linesBlogs)
+colnames(linesDFBlog)<-('text')
+linesDFNews<-as.data.frame(linesNews)
+colnames(linesDFNews)<-('text')
+linesDFTweets<-as.data.frame(linesTweets)
+colnames(linesDFTweets)<-('text')
+linesAll<-rbind(linesDFBlog,linesDFNews)
+linesAll<-rbind(linesAll,linesDFTweets)
+
+
+```
+
+
+```{r echo=TRUE}
+
+# load English stop words
+stopwords = data.frame(word = stopwords("en"))
+
+remove_words_from_text <- function(text) {
+  text <- unlist(strsplit(text, " "))
+  paste(text[!text %in% words_to_remove], collapse = " ")
+}
+words_to_remove <- stop_words$word
+linesAll$text <- lapply(linesAll$text, remove_words_from_text)
+```
+
+
+
+# Top Frequencies for words
+
+
+
+```{r wordcount, echo=TRUE}
+
+allTextUniGrams <- linesAll %>% unnest_tokens(word, text) %>% anti_join(stopwords)
+frequency = allTextUniGrams %>% count(word) %>% arrange(desc(n))
+topFrequency = head(frequency, 10)
+print(topFrequency)
+
+topFrequency %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n)) +
+  geom_col(fill = "slateblue") +
+  xlab(NULL) +
+  coord_flip()
+```
+
+
+# Top frequencies for Bigrams
+
+
+```{r bifreq, echo=TRUE, message=FALSE, warning=FALSE, cache=TRUE}
+
+
+allTextBiGrams <- linesAll %>% unnest_tokens(word, text, token= 'ngrams', n=2 ) %>% anti_join(stopwords)
+frequency = allTextBiGrams %>% count(word) %>% arrange(desc(n))
+topFrequency = head(frequency, 10)
+print(topFrequency)
+
+topFrequency %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n)) +
+  geom_col(fill = "slateblue") +
+  xlab(NULL) +
+  coord_flip()
+```
+
+# Top frequencies for Trigrams
+
+```{r trifreq, echo=TRUE, message=FALSE, warning=FALSE, cache=TRUE}
+allTextBiGrams <- linesAll %>% unnest_tokens(word, text, token= 'ngrams', n=3 ) %>% anti_join(stopwords)
+frequency = allTextBiGrams %>% count(word) %>% arrange(desc(n))
+topFrequency = head(frequency, 10)
+print(topFrequency)
+
+topFrequency %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n)) +
+  geom_col(fill = "slateblue") +
+  xlab(NULL) +
+  coord_flip()
+```
+
